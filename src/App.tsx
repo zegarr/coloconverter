@@ -203,32 +203,46 @@ export default function App() {
   };
 
   const handleInput = (currency: Currency, val: string) => {
-    if (val !== '' && !/^[\d\.\+\-\*\/\(\) ]+$/.test(val)) return;
+    const cleanStr = val.replace(/,/g, '');
+    
+    if (cleanStr !== '' && !/^[\d\.\+\-\*\/\(\) ]+$/.test(cleanStr)) return;
 
-    if (val === '') {
+    if (cleanStr === '') {
       setValues({ USD: '', UYU: '', COP: '' });
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       return;
     }
 
-    const numVal = safeEval(val);
+    const numVal = safeEval(cleanStr);
     
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
 
+    const formatExpression = (str: string) => {
+      return str.replace(/\d+(\.\d*)?/g, (match) => {
+        const [int, dec] = match.split('.');
+        const formattedInt = int.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        return dec !== undefined ? `${formattedInt}.${dec}` : formattedInt;
+      });
+    };
+
+    const activeFormatted = formatExpression(cleanStr);
+
     if (isNaN(numVal)) {
-      setValues(prev => ({ ...prev, [currency]: val }));
+      setValues(prev => ({ ...prev, [currency]: activeFormatted }));
       return;
     }
 
     const baseUsd = numVal / rates[currency];
 
-    const formatToTwoDecimalPlaces = (num: number) => parseFloat(num.toFixed(2)).toString();
+    const formatComputed = (num: number) => {
+      return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(num);
+    };
 
     setValues({
-      [currency]: val,
-      USD: currency === 'USD' ? val : formatToTwoDecimalPlaces(baseUsd * rates.USD),
-      UYU: currency === 'UYU' ? val : formatToTwoDecimalPlaces(baseUsd * rates.UYU),
-      COP: currency === 'COP' ? val : formatToTwoDecimalPlaces(baseUsd * rates.COP),
+      [currency]: activeFormatted,
+      USD: currency === 'USD' ? activeFormatted : formatComputed(baseUsd * rates.USD),
+      UYU: currency === 'UYU' ? activeFormatted : formatComputed(baseUsd * rates.UYU),
+      COP: currency === 'COP' ? activeFormatted : formatComputed(baseUsd * rates.COP),
     });
 
     typingTimeoutRef.current = setTimeout(() => {
@@ -501,8 +515,9 @@ function CurrencyInput({
   accent
 }: CurrencyInputProps) {
   
-  const hasMath = value?.includes('+') || value?.includes('-') || value?.includes('*') || value?.includes('/');
-  const numericValue = safeEval(value);
+  const cleanValue = value ? value.replace(/,/g, '') : '';
+  const hasMath = cleanValue.includes('+') || cleanValue.includes('-') || cleanValue.includes('*') || cleanValue.includes('/');
+  const numericValue = safeEval(cleanValue);
   const isValidMath = !isNaN(numericValue);
   const isFilled = value && value !== '';
   
