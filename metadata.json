@@ -1,0 +1,6 @@
+{
+  "name": "colocobverter",
+  "description": "Minimalist currency converter for UYU, COP, and USD",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
